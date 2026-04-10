@@ -189,10 +189,218 @@ STATE_FORM_POINTERS = [
      "Ask your primary care physician or hospice team. Forms vary by state name (POLST, MOLST, POST, etc.)."),
 ]
 
+# Modes
+MODES = ["For my parents", "For ourselves", "For someone else"]
+
 # Muted blue/gray palette
 PRIMARY = "#4A6274"
 MUTED = "#7A8B99"
 BG = "#F5F7FA"
+
+
+# ---------------- Mode context ----------------
+# All UI text that should shift based on who this workbook is for.
+# "subject" = the person whose affairs are being organized.
+# "user" = the person filling out the workbook.
+
+def _someone_name() -> str:
+    return st.session_state.get("someone_name", "this person") or "this person"
+
+
+def ctx() -> dict:
+    """Return a context dict for the current mode — used for all UI text."""
+    mode = mode_key()
+    if "parent" in mode.lower():
+        return {
+            "subject": "your parent",
+            "subject_plural": "your parents",
+            "subject_possessive": "their",
+            "subject_they": "they",
+            "user_role": "adult child",
+            "you_or_they": "they",
+            "your_or_their": "their",
+            "you_or_them": "them",
+            "ask_or_write": "Ask about",
+            "gather_verb": "Find out where they keep",
+            "before_urgency": (
+                "This is the most critical section. Everything here requires your parent "
+                "to be alive and mentally competent. Once that changes, most of these "
+                "become impossible or extremely difficult. Have the conversation now."
+            ),
+            "during_intro": (
+                "Your parent is declining and you're managing their care. This section "
+                "helps you track the logistical reality of caregiving."
+            ),
+            "end_intro": (
+                "Your parent is near the end. These are the decisions and arrangements "
+                "that need to happen now."
+            ),
+            "after_intro": (
+                "Your parent has died. Here's what needs to happen and roughly when. "
+                "The first 48 hours are the most time-sensitive."
+            ),
+            "contacts_intro": (
+                "The professionals and institutions involved in your parent's affairs. "
+                "You'll be calling all of these people."
+            ),
+            "registry_intro": (
+                "Every account, policy, and subscription your parent has. "
+                "You'll need this to close, transfer, or cancel each one."
+            ),
+            "forms_hipaa": (
+                "For this mode, **you** are the recipient — the person getting access to "
+                "your parent's medical records. Your parent (or their legal representative) signs it."
+            ),
+            "forms_letter": (
+                "This is something your parent would write, not you. If they're willing, "
+                "sit with them and help them fill it out. If not, fill in what you know "
+                "and note what's missing."
+            ),
+            "forms_funeral": (
+                "Ask your parent about their preferences. Writing it down now saves you from "
+                "guessing during the worst 48 hours of your life."
+            ),
+            "forms_digital": (
+                "Where are their accounts? How do you get in? What do they want done "
+                "with their email, social media, photos? Ask now."
+            ),
+            "report_before_flag": (
+                "These items require a conversation with your parent while they're able to participate. "
+                "Every one left open is a gap you'll have to fill blind."
+            ),
+            "overview_intro": (
+                "You're organizing your parent's affairs — gathering the information "
+                "you'll need when the time comes, or that you need right now if things are "
+                "already in motion."
+            ),
+        }
+    elif "ourselves" in mode.lower():
+        return {
+            "subject": "you",
+            "subject_plural": "you and your partner",
+            "subject_possessive": "your",
+            "subject_they": "you",
+            "user_role": "the person preparing",
+            "you_or_they": "you",
+            "your_or_their": "your",
+            "you_or_them": "you",
+            "ask_or_write": "Document",
+            "gather_verb": "Write down where you keep",
+            "before_urgency": (
+                "This is the gift you give your kids (or whoever handles your affairs). "
+                "Everything here is something *you* know right now but nobody else does. "
+                "If you get hit by a bus tomorrow, can they find it all? Do this section first."
+            ),
+            "during_intro": (
+                "If you're managing your own illness or decline, these are the systems "
+                "and people you'll put in place. If you're preparing in advance, think of "
+                "this as instructions to whoever steps in."
+            ),
+            "end_intro": (
+                "Your wishes for the very end. Writing this down is an act of kindness — "
+                "it takes impossible decisions off your family's plate."
+            ),
+            "after_intro": (
+                "What your family will need to do after you die, and roughly when. "
+                "Reviewing this now helps you make sure the information they'll need "
+                "is actually documented."
+            ),
+            "contacts_intro": (
+                "The people your family will need to call. Write them down here so "
+                "your kids don't have to go hunting."
+            ),
+            "registry_intro": (
+                "Every account, policy, and subscription you have. Your family will "
+                "need to close, transfer, or cancel each one. They won't know what "
+                "exists unless you tell them."
+            ),
+            "forms_hipaa": (
+                "For this mode, **your kids or designated person** are the recipient — "
+                "you're granting them access to your medical records. You sign it."
+            ),
+            "forms_letter": (
+                "This is the core deliverable of this workbook — a letter from you to "
+                "your family, in your own words, explaining where everything is and "
+                "who to call. Take your time with it."
+            ),
+            "forms_funeral": (
+                "Write down what you want. Burial or cremation? What kind of service? "
+                "Your family will be grateful they don't have to guess."
+            ),
+            "forms_digital": (
+                "Document your digital life. Where's the password manager? What happens to "
+                "your email, social media, photos? Your family won't know any of this."
+            ),
+            "report_before_flag": (
+                "These are things only you know. Every one left open is something your "
+                "family will have to figure out without you."
+            ),
+            "overview_intro": (
+                "You're getting your own affairs in order — creating the binder your "
+                "kids or executor will need when the time comes. This is one of the "
+                "most useful things you can do for the people you love."
+            ),
+        }
+    else:
+        name = _someone_name()
+        return {
+            "subject": name,
+            "subject_plural": name,
+            "subject_possessive": f"{name}'s",
+            "subject_they": "they",
+            "user_role": "the person helping",
+            "you_or_they": "they",
+            "your_or_their": "their",
+            "you_or_them": "them",
+            "ask_or_write": "Find out",
+            "gather_verb": f"Find out where {name} keeps",
+            "before_urgency": (
+                f"This is the most critical section. Everything here requires {name} "
+                "to be alive and mentally competent. Once that changes, most of these "
+                "become impossible or extremely difficult."
+            ),
+            "during_intro": (
+                f"{name} is declining and you're helping manage their care. This section "
+                "helps you track the logistics."
+            ),
+            "end_intro": (
+                f"{name} is near the end. These are the decisions and arrangements "
+                "that need to happen now."
+            ),
+            "after_intro": (
+                f"{name} has died. Here's what needs to happen and roughly when."
+            ),
+            "contacts_intro": (
+                f"The professionals and institutions involved in {name}'s affairs."
+            ),
+            "registry_intro": (
+                f"Every account, policy, and subscription {name} has."
+            ),
+            "forms_hipaa": (
+                f"**You** (or the designated person) are the recipient — getting access to "
+                f"{name}'s medical records. {name} (or their legal representative) signs it."
+            ),
+            "forms_letter": (
+                f"This is something {name} would write. If they're able, help them fill it "
+                "out. Otherwise, fill in what you know and note the gaps."
+            ),
+            "forms_funeral": (
+                f"Ask {name} about their preferences, if possible. Otherwise, record what "
+                "you know or what the family has discussed."
+            ),
+            "forms_digital": (
+                f"Where are {name}'s accounts? How do you get in? "
+                "What do they want done with their digital life?"
+            ),
+            "report_before_flag": (
+                f"These items require {name}'s participation while they're able. "
+                "Every one left open is a gap."
+            ),
+            "overview_intro": (
+                f"You're organizing {name}'s affairs — gathering the information "
+                "that will be needed when the time comes."
+            ),
+        }
 
 
 # ---------------- Parsing ----------------
@@ -315,7 +523,12 @@ def mode_key() -> str:
 
 
 def mode_slug(mode: str) -> str:
-    return "parents" if "parent" in mode.lower() else "self"
+    if "parent" in mode.lower():
+        return "parents"
+    elif "ourselves" in mode.lower():
+        return "self"
+    else:
+        return "other"
 
 
 def data_file(mode: str) -> Path:
@@ -383,6 +596,8 @@ def save_user_data(mode: str):
         "saved_at": datetime.now().isoformat(timespec="seconds"),
         "data": data,
     }
+    if "someone" in mode.lower():
+        payload["someone_name"] = st.session_state.get("someone_name", "")
     f = get_fernet(mode)
     if f is not None:
         salt_b64 = get_salt(mode) or base64.b64encode(os.urandom(16)).decode()
@@ -411,6 +626,10 @@ def load_user_data(mode: str, structure: dict, passphrase: Optional[str] = None)
         st.warning(f"Couldn't parse {path.name}: {e}")
         return default_user_state(structure), "default"
 
+    def _restore_someone_name(payload: dict):
+        if "someone" in mode.lower() and "someone_name" in payload:
+            st.session_state["someone_name"] = payload["someone_name"]
+
     if blob.get("encrypted"):
         if not passphrase:
             return default_user_state(structure), "locked"
@@ -422,10 +641,12 @@ def load_user_data(mode: str, structure: dict, passphrase: Optional[str] = None)
             payload = json.loads(plain)
             set_fernet(mode, f)
             set_salt(mode, blob["salt"])
+            _restore_someone_name(payload)
             return reconcile(payload.get("data", {}), structure), "loaded"
         except (InvalidToken, ValueError, KeyError):
             return default_user_state(structure), "bad_passphrase"
     else:
+        _restore_someone_name(blob)
         return reconcile(blob.get("data", {}), structure), "loaded"
 
 
@@ -975,7 +1196,20 @@ def section_progress(items, ustate):
     return done / total, done, total
 
 
+SECTION_GUIDANCE_KEYS = {
+    "Before": "before_urgency",
+    "During Illness": "during_intro",
+    "At End - Hospice": "end_intro",
+    "After Death": "after_intro",
+}
+
+
 def render_checklist(sheet: str, structure: dict):
+    c = ctx()
+    guidance_key = SECTION_GUIDANCE_KEYS.get(sheet)
+    if guidance_key and guidance_key in c:
+        st.markdown(f"*{c[guidance_key]}*")
+
     items = structure["checklists"].get(sheet, [])
     mode = mode_key()
     ustate = st.session_state["user_data"][mode]["checklists"].setdefault(
@@ -1071,6 +1305,12 @@ def render_checklist(sheet: str, structure: dict):
 
 
 def render_table(sheet: str, structure: dict):
+    c = ctx()
+    if sheet == "Key Contacts":
+        st.markdown(f"*{c['contacts_intro']}*")
+    elif sheet == "Account Registry":
+        st.markdown(f"*{c['registry_intro']}*")
+
     tbl = structure["tables"].get(sheet)
     if not tbl:
         st.info("No table defined.")
@@ -1125,6 +1365,7 @@ def render_forms(structure: dict):
     form_id = form_ids[choice_idx]
     spec = FORMS[form_id]
 
+    c = ctx()
     st.markdown(f"### {spec['title']}")
     st.caption(spec["blurb"])
     if spec["kind"] == "legal-federal":
@@ -1135,10 +1376,20 @@ def render_forms(structure: dict):
         )
     else:
         st.info(
-            "This is a **personal document**, not a legal instrument. It's meant to supplement your "
-            "will and help the people acting on your behalf. It does not replace a will or any "
-            "state-required legal form."
+            f"This is a **personal document**, not a legal instrument. It's meant to supplement "
+            f"{c['your_or_their']} will and help the people acting on {c['your_or_their']} behalf. "
+            f"It does not replace a will or any state-required legal form."
         )
+
+    # Mode-specific guidance per form
+    form_ctx_key = {
+        "hipaa": "forms_hipaa",
+        "letter_of_instruction": "forms_letter",
+        "funeral_wishes": "forms_funeral",
+        "digital_assets": "forms_digital",
+    }.get(form_id)
+    if form_ctx_key and form_ctx_key in c:
+        st.markdown(f"*{c[form_ctx_key]}*")
 
     form_data = user["forms"].setdefault(
         form_id, {f[0]: f[3] for f in spec["fields"]}
@@ -1198,12 +1449,13 @@ def render_forms(structure: dict):
 
 
 def render_report(structure: dict):
+    c = ctx()
     mode = mode_key()
     user = st.session_state["user_data"][mode]
     st.markdown("## Completeness report")
     st.caption(
-        "What's still open. **Before** items are flagged most aggressively — "
-        "they become much harder to gather after incapacity or death."
+        f"What's still open. **Before** items are flagged most aggressively — "
+        f"{c['report_before_flag']}"
     )
 
     overall_done = overall_total = 0
@@ -1236,6 +1488,8 @@ def render_report(structure: dict):
         with st.expander(
             f"{flag} {sheet} — {len(missing)} open", expanded=(sheet == "Before"),
         ):
+            if sheet == "Before":
+                st.caption(c["report_before_flag"])
             for i, it in missing:
                 status = ustate[i]["status"]
                 st.markdown(f"- **{it['item']}** _({status})_ — {it.get('details','')}")
@@ -1346,7 +1600,7 @@ def main():
     # Init state
     if "user_data" not in st.session_state:
         st.session_state["user_data"] = {}
-        for m in ("For my parents", "For ourselves"):
+        for m in MODES:
             data, status = load_user_data(m, structure, passphrase=None)
             st.session_state["user_data"][m] = data
     if "mode" not in st.session_state:
@@ -1359,14 +1613,21 @@ def main():
         "nothing here needs to be done all at once. Save often."
     )
 
-    col_mode, _ = st.columns([2, 5])
+    col_mode, col_name = st.columns([3, 4])
     with col_mode:
         st.session_state["mode"] = st.radio(
-            "Working on",
-            ["For my parents", "For ourselves"],
+            "This workbook is",
+            MODES,
             horizontal=True,
-            index=["For my parents", "For ourselves"].index(st.session_state["mode"]),
+            index=MODES.index(st.session_state.get("mode", MODES[0])),
         )
+    with col_name:
+        if st.session_state["mode"] == "For someone else":
+            st.session_state["someone_name"] = st.text_input(
+                "Their name (used in guidance text)",
+                value=st.session_state.get("someone_name", ""),
+                placeholder="e.g., Aunt Linda, my brother David",
+            )
     mode = mode_key()
     locked = (not IS_CLOUD
               and file_is_encrypted(data_file(mode))
@@ -1401,9 +1662,10 @@ def main():
                 if p:
                     st.success(f"Saved to {p.name}")
 
-        payload = json.dumps(
-            {"mode": mode, "data": st.session_state["user_data"][mode]}, indent=2,
-        )
+        dl_obj: dict = {"mode": mode, "data": st.session_state["user_data"][mode]}
+        if "someone" in mode.lower():
+            dl_obj["someone_name"] = st.session_state.get("someone_name", "")
+        payload = json.dumps(dl_obj, indent=2)
         st.download_button(
             "⬇ Download JSON" + (" (your only save method here)" if IS_CLOUD else " (plaintext)"),
             data=payload,
@@ -1419,6 +1681,8 @@ def main():
                 blob = json.loads(uploaded.read())
                 data = blob.get("data", blob)
                 st.session_state["user_data"][mode] = reconcile(data, structure)
+                if "someone" in mode.lower() and "someone_name" in blob:
+                    st.session_state["someone_name"] = blob["someone_name"]
                 st.success("Loaded.")
             except Exception as e:
                 st.error(f"Couldn't load: {e}")
@@ -1465,24 +1729,26 @@ def main():
 
 
 def render_overview(structure: dict):
+    c = ctx()
     st.markdown("## Where to start")
+    st.markdown(c["overview_intro"])
     st.markdown(
-        """
-        This workbook is organized around the sequence things actually happen in:
+        f"""
+        The workbook is organized around the sequence things actually happen in:
 
-        1. **Before** — what to gather *now*, while the person is healthy. This is the most important section. Anything not captured here becomes much harder later.
-        2. **During Illness** — care management, insurance, finances while someone is declining.
+        1. **Before** — what to gather *now*, while {c['subject']} {c['subject_they'] == 'you' and 'are' or 'is'} healthy. {c['before_urgency'].split('.')[0]}.
+        2. **During Illness** — care management, insurance, finances during a decline.
         3. **At End / Hospice** — DNR, hospice enrollment, final wishes.
         4. **After Death** — organized by timeframe (first 48 hours → 6 months).
-        5. **Key Contacts** — the people you'll call.
+        5. **Key Contacts** — the people who'll need to be called.
         6. **Account Registry** — every account, policy, and subscription in one place.
-        7. **Forms** — fillable templates (HIPAA authorization, letter of instruction, funeral wishes, digital asset instructions) you can print and sign.
+        7. **Forms** — fillable templates (HIPAA authorization, letter of instruction, funeral wishes, digital asset instructions) to print and sign.
 
         **A few things worth knowing:**
         - Work one item at a time. Nothing here needs to happen in one sitting.
         - Use the **"Your info"** box next to each item to write where something lives.
         - You can **attach scanned documents** (will, POA, deed, etc.) to any item.
-        - Save often. The **Save** button in the sidebar writes to a local JSON file.
+        - Save often. {'Download the JSON before closing this tab.' if IS_CLOUD else 'The **Save** button in the sidebar writes to a local JSON file.'}
         - The **Completeness report** tells you what's still open, with the "Before" items flagged most urgently.
         - When ready, **Generate PDF** makes a printable binder.
         """
@@ -1490,22 +1756,27 @@ def render_overview(structure: dict):
 
     st.markdown("### A note on what to put in this file")
     st.markdown(
-        """
+        f"""
         This file can hold sensitive information — SSNs, account numbers, medical details, scans of legal documents. Please read this before filling it in.
 
-        **What the encryption option does.** When you set a passphrase in the sidebar, the saved JSON file and any uploaded documents are encrypted on disk using AES (Fernet) with a key derived from your passphrase (PBKDF2-SHA256, 200,000 iterations). Without the passphrase the file is unreadable. **If you forget the passphrase, the data is gone — there is no recovery.**
-
-        **What it does *not* do.** It doesn't protect the data while the app is unlocked and running. It doesn't protect against malware on your computer. It doesn't back anything up — that's on you.
-
-        **Recommended setup:**
-        - Run this on a computer with full-disk encryption (FileVault on macOS, BitLocker on Windows).
-        - Set a passphrase in the sidebar. Use a long one. Store it in a password manager — not in this file.
-        - For the *most* sensitive items (SSNs, master passwords, financial account credentials), the safest pattern is to put them in a password manager like 1Password and then write a **reference** in this workbook ("SSN: in 1Password, item 'Mom SSN'"). That way the workbook can be shared with siblings or a lawyer later without exposing everything.
-        - Back up the `data/` folder somewhere safe. An encrypted external drive or an encrypted cloud backup is fine. Email is not.
-
-        **On shared access:** if multiple family members need to work on this together, one option is to keep the file in a shared encrypted vault (1Password, Bitwarden, Proton Drive, etc.) and sync manually rather than running the app over a network.
+        **The best approach for really sensitive items** (SSNs, master passwords, financial account credentials):
+        put them in a password manager like 1Password and then write a **reference** in this workbook
+        ("SSN: in 1Password, item '{c['subject_possessive'].rstrip("'s") if c['subject_possessive'].endswith("'s") else c['subject']} SSN'").
+        That way the workbook can be shared with family members or a lawyer later without exposing everything.
         """
     )
+    if not IS_CLOUD:
+        st.markdown(
+            """
+            **On encryption:** When you set a passphrase in the sidebar, the saved JSON file and any uploaded
+            documents are encrypted on disk (AES, key derived from your passphrase). If you forget
+            the passphrase, the data is gone — there is no recovery. Run this on a computer with full-disk
+            encryption (FileVault / BitLocker) as the baseline.
+
+            **On shared access:** if multiple family members need to work on this, keep the file in a
+            shared encrypted vault (1Password, Bitwarden, Proton Drive) and sync manually.
+            """
+        )
 
     if structure["instructions"]:
         with st.expander("Workbook introduction (from the source file)"):
