@@ -743,6 +743,77 @@ def delete_attachment(mode: str, sheet: str, att: dict):
             path.unlink()
 
 
+def export_portable_json(mode: str) -> dict:
+    """Build a fully self-contained JSON-serializable dict with attachment bytes embedded.
+
+    Attachments are stored as base64 under each item's "attachments" list, in a
+    key called "data_b64". The raw file bytes are always plaintext (decrypted if
+    needed) so the portable JSON can be loaded anywhere.
+    """
+    import copy
+    user = copy.deepcopy(st.session_state["user_data"][mode])
+    for sheet, items in user.get("checklists", {}).items():
+        for item in items:
+            for att in item.get("attachments", []):
+                raw = read_attachment(mode, sheet, att)
+                if raw is not None:
+                    att["data_b64"] = base64.b64encode(raw).decode("ascii")
+                else:
+                    att["data_b64"] = None
+    obj: dict = {"mode": mode, "data": user}
+    if "someone" in mode.lower():
+        obj["someone_name"] = st.session_state.get("someone_name", "")
+    return obj
+
+
+def import_portable_json(blob: dict, mode: str, structure: dict):
+    """Load a portable JSON (possibly with embedded attachment bytes).
+
+    Extracts any base64 attachment data and stores it via save_attachment's
+    storage backend (disk or memory depending on IS_CLOUD).
+    """
+    data = blob.get("data", blob)
+    user = reconcile(data, structure)
+
+    # Restore embedded attachments
+    for sheet, items in user.get("checklists", {}).items():
+        for idx, item in enumerate(items):
+            new_atts = []
+            for att in item.get("attachments", []):
+                b64 = att.pop("data_b64", None)
+                if b64 is not None:
+                    raw = base64.b64decode(b64)
+                    # Store via the normal path (respects IS_CLOUD and encryption)
+                    stored_name = att["stored_name"]
+                    if IS_CLOUD:
+                        # Store plaintext in memory (encryption is local-only)
+                        st.session_state.setdefault("_attach_bytes", {})[
+                            _attach_mem_key(mode, sheet, stored_name)
+                        ] = raw
+                    else:
+                        # Write to disk — re-encrypt if a fernet is active
+                        f = get_fernet(mode)
+                        d = item_attach_dir(mode, sheet)
+                        if f is not None:
+                            if not stored_name.endswith(".enc"):
+                                stored_name = stored_name + ".enc"
+                            (d / stored_name).write_bytes(f.encrypt(raw))
+                            att["stored_name"] = stored_name
+                            att["encrypted"] = True
+                        else:
+                            if stored_name.endswith(".enc"):
+                                stored_name = stored_name[:-4]
+                            (d / stored_name).write_bytes(raw)
+                            att["stored_name"] = stored_name
+                            att["encrypted"] = False
+                new_atts.append(att)
+            item["attachments"] = new_atts
+
+    st.session_state["user_data"][mode] = user
+    if "someone" in mode.lower() and "someone_name" in blob:
+        st.session_state["someone_name"] = blob["someone_name"]
+
+
 def reencrypt_all_attachments(mode: str, old_fernet: Optional[Fernet], new_fernet: Optional[Fernet]):
     """Re-encrypt / decrypt / rotate all attachments in place."""
     if IS_CLOUD:
@@ -1677,13 +1748,13 @@ def main():
                 saved_at = datetime.now().strftime("%H:%M:%S")
                 st.caption(f"Auto-saved at {saved_at}")
 
-        dl_obj: dict = {"mode": mode, "data": st.session_state["user_data"][mode]}
-        if "someone" in mode.lower():
-            dl_obj["someone_name"] = st.session_state.get("someone_name", "")
-        payload = json.dumps(dl_obj, indent=2)
+        dl_obj = export_portable_json(mode) if not locked else {}
+        payload = json.dumps(dl_obj, indent=2) if dl_obj else "{}"
+        payload_mb = len(payload) / (1024 * 1024)
+        size_note = f" ({payload_mb:.1f} MB)" if payload_mb > 0.5 else ""
         if IS_CLOUD:
             st.download_button(
-                "⬇ Download JSON — your only save",
+                f"⬇ Download JSON — your only save{size_note}",
                 data=payload,
                 file_name=f"death_workbook_{mode_slug(mode)}.json",
                 mime="application/json",
@@ -1691,25 +1762,23 @@ def main():
                 disabled=locked,
                 type="primary",
             )
+            st.caption("Includes all attached documents.")
         else:
             st.download_button(
-                "⬇ Download JSON backup",
+                f"⬇ Download JSON backup{size_note}",
                 data=payload,
                 file_name=f"death_workbook_{mode_slug(mode)}.json",
                 mime="application/json",
                 use_container_width=True,
                 disabled=locked,
-                help="For backup or sharing. Your working data auto-saves to the project folder.",
+                help="Complete backup including attachments. Use to share or move to another machine.",
             )
         uploaded = st.file_uploader("Load JSON", type=["json"])
         if uploaded is not None and not locked:
             try:
                 blob = json.loads(uploaded.read())
-                data = blob.get("data", blob)
-                st.session_state["user_data"][mode] = reconcile(data, structure)
-                if "someone" in mode.lower() and "someone_name" in blob:
-                    st.session_state["someone_name"] = blob["someone_name"]
-                st.success("Loaded.")
+                import_portable_json(blob, mode, structure)
+                st.success("Loaded (including any attachments).")
             except Exception as e:
                 st.error(f"Couldn't load: {e}")
 
