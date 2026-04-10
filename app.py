@@ -31,8 +31,15 @@ XLSX_PATH = APP_DIR / "Death_Planning_Workbook.xlsx"
 DATA_DIR = APP_DIR / "data"
 ATTACH_DIR = DATA_DIR / "attachments"
 
-# Detect cloud deployment (Streamlit Community Cloud sets this)
-IS_CLOUD = bool(os.environ.get("STREAMLIT_SHARING_MODE") or os.environ.get("STREAMLIT_SERVER_HEADLESS"))
+# Detect cloud deployment — Streamlit Community Cloud sets specific env vars.
+# STREAMLIT_SERVER_HEADLESS is also set locally by `streamlit run`, so it's not
+# reliable on its own. We check for vars that only exist on Community Cloud.
+IS_CLOUD = bool(
+    os.environ.get("STREAMLIT_SHARING_MODE")
+    or os.environ.get("HOSTNAME", "").endswith(".streamlit.app")
+    or os.environ.get("HOME", "").startswith("/mount/")
+    or os.environ.get("STREAMLIT_SERVER_ADDRESS")  # set on Community Cloud
+)
 
 # Only create disk dirs when running locally
 if not IS_CLOUD:
@@ -1655,26 +1662,45 @@ def main():
             render_security_sidebar(structure)
             st.divider()
 
-        st.markdown("### Save & export")
-        if not IS_CLOUD:
-            if st.button("💾 Save to disk", use_container_width=True, disabled=locked):
-                p = save_user_data(mode)
-                if p:
-                    st.success(f"Saved to {p.name}")
+        # -- Save & export --
+        if IS_CLOUD:
+            st.markdown("### Save your work")
+            st.caption(
+                "Your data lives in this browser tab only. "
+                "**Download the JSON** to keep it. Upload it next time to continue."
+            )
+        else:
+            st.markdown("### Save & export")
+            # Auto-save on every interaction (local only)
+            if not locked:
+                save_user_data(mode)
+                saved_at = datetime.now().strftime("%H:%M:%S")
+                st.caption(f"Auto-saved at {saved_at}")
 
         dl_obj: dict = {"mode": mode, "data": st.session_state["user_data"][mode]}
         if "someone" in mode.lower():
             dl_obj["someone_name"] = st.session_state.get("someone_name", "")
         payload = json.dumps(dl_obj, indent=2)
-        st.download_button(
-            "⬇ Download JSON" + (" (your only save method here)" if IS_CLOUD else " (plaintext)"),
-            data=payload,
-            file_name=f"death_workbook_{mode_slug(mode)}.json",
-            mime="application/json",
-            use_container_width=True,
-            disabled=locked,
-            help="Download your workbook data as a JSON file you can reload later.",
-        )
+        if IS_CLOUD:
+            st.download_button(
+                "⬇ Download JSON — your only save",
+                data=payload,
+                file_name=f"death_workbook_{mode_slug(mode)}.json",
+                mime="application/json",
+                use_container_width=True,
+                disabled=locked,
+                type="primary",
+            )
+        else:
+            st.download_button(
+                "⬇ Download JSON backup",
+                data=payload,
+                file_name=f"death_workbook_{mode_slug(mode)}.json",
+                mime="application/json",
+                use_container_width=True,
+                disabled=locked,
+                help="For backup or sharing. Your working data auto-saves to the project folder.",
+            )
         uploaded = st.file_uploader("Load JSON", type=["json"])
         if uploaded is not None and not locked:
             try:
